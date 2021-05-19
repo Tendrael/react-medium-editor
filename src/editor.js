@@ -13,9 +13,7 @@ export default class ReactMediumEditor extends React.Component {
   constructor(props) {
     super(props);
 
-    this.state = {
-      text: this.props.text
-    };
+    this.text = this.props.text;
   }
 
   componentDidMount() {
@@ -24,25 +22,31 @@ export default class ReactMediumEditor extends React.Component {
     this.medium = new MediumEditor(dom, this.props.options);
     this.medium.subscribe('editableInput', e => {
       this._updated = true;
+      this.text = dom.innerHTML;
       this.change(dom.innerHTML);
     });
-  }
-
-  componentDidUpdate() {
-    this.medium.restoreSelection();
   }
 
   componentWillUnmount() {
     this.medium.destroy();
   }
 
-  componentWillReceiveProps(nextProps) {
-    if (nextProps.text !== this.state.text && !this._updated) {
-      this.setState({ text: nextProps.text });
+  shouldComponentUpdate(nextProps) {
+    //inside update: received old text
+    if (this._updated && nextProps.text != this.text)
+      return false;
+
+    //ignore same text
+    if (nextProps.text == this.text) {
+      this._updated = false;
+      return false;
     }
 
-    if (this._updated) this._updated = false;
+    //outside update
+    this.text = nextProps.text;
+    return true;
   }
+
 
   render() {
     const {
@@ -55,9 +59,9 @@ export default class ReactMediumEditor extends React.Component {
     } = this.props;
     props.dangerouslySetInnerHTML = { __html: this.state.text };
 
-    if (this.medium) {
-      this.medium.saveSelection();
-    }
+    assign(props, {
+      dangerouslySetInnerHTML: { __html: this.text }
+    });
 
     return React.createElement(tag, props);
   }
